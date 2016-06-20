@@ -13,12 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+/**
+ifndef .. define ... endif   用于防止头文件的重复包含和编译
+*/
 #ifndef TENSORFLOW_FRAMEWORK_OP_KERNEL_H_
 #define TENSORFLOW_FRAMEWORK_OP_KERNEL_H_
-
+/**引入function和vector标准库*/
 #include <functional>
 
 #include <vector>
+/**引入其他依赖*/
 #include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/framework/cancellation.h"
 #include "tensorflow/core/framework/control_flow.h"
@@ -50,11 +54,78 @@ limitations under the License.
 #include "tensorflow/core/platform/thread_annotations.h"
 #include "tensorflow/core/platform/types.h"
 
+/**固有属性空间: 定义线程迟设备，Gpu设备*/
 namespace Eigen {
 struct ThreadPoolDevice;
 struct GpuDevice;
 }  // end namespace Eigen
 
+/**
+tensorflow空间:
+    checkpoint空间：
+        定义类: TensorSliceReaderCacheWrapper :张量切片阅读器缓存封装器
+    register_kernel空间：
+        定义类型别名:Name <- tensorflow::KernelDefBuilder
+    kernel_factory空间：
+        定义类： OpKernelRegistrar： 操作核心注册器
+    定义类：
+        AsyncOpKernel： 异步操作
+        OpKernelConstruction： 操作核心构造
+        OpKernelContext： 操作核心上下文
+        ResourceMgr： 资源管理器
+        OpKernel: 操作核心
+        AsyncOpKernel: 异步操作核心
+        PersistentTensor：持久化张量
+        OpArgIterator: 操作参数迭代器
+        OpInputList：操作输入列表
+        OpMutableInputList：操作不可变输入列表
+        OpOutputList：操作输出列表
+    定义结构：
+        TensorValue： 张量值
+    定义方法：
+        CreateOpKernel：创建操作核心
+        SupportedDeviceTypesForNode： 查询节点支持的设备列表
+        ValidateKernelRegistrations：检查核心注册
+        GlobalKernelRegistry：全局核心注册、
+        FindKernelDef：查找核心定义
+        RegisterKernels:注册核心
+    定义宏：
+        REGISTER_KERNEL_BUILDER：注册核心构建器
+        REGISTER_KERNEL_BUILDER_UNIQ_HELPER：注册核心构建器唯一性辅助
+        REGISTER_KERNEL_BUILDER_UNIQ：注册核心构建器唯一性
+        OP_REQUIRES：操作依赖
+        OP_REQUIRES_OK： 操作依赖满足
+        OP_REQUIRES_ASYNC: 操作依赖异步
+        OP_REQUIRES_OK_ASYNC：操作依赖满足异步
+    定义模板：
+        模板T:
+            定义方法:
+                GetAttr:获取属性
+                op_device_context：获取设备上下文
+                input_device_context：获取指定输入的设备上下文
+
+
+    定义内联函数：
+            input_dtype： 获取输入类型
+            expected_output_dtype： 获取输出类型
+            record_tensor_reference： 记录张量引用
+            retrieve_accessed_tensors： 获取访问的张量
+            has_input：判断是否有指定输入
+            input_ref_mutex：输入引用互斥
+            NotifyUseOfPersistentTensor：通知使用持久化张量
+            mutable_output：获取可变输出
+            release_output：释放输出
+            input_device_context： 获取指定输入的设备上下文
+            OpInputList::operator
+            OpMutableInputList::ref_mutex：引用互斥
+            OpMutableInputList::at：
+            OpOutputList::operator：
+            OpOutputList::required：
+            OpOutputList::allocate：
+            OpOutputList::set：
+            OpOutputList::set_ref：
+
+*/
 namespace tensorflow {
 
 namespace checkpoint {
@@ -71,7 +142,9 @@ class OpKernel {
  public:
   // OpKernel won't be instantiated by the scheduler, so you may perform
   // expensive initialization in the descendant's constructor.
+  /**explicit用来防止由构造函数定义的隐式转换。*/
   explicit OpKernel(OpKernelConstruction* context);
+  /**虚函数，动态多态构造函数*/
   virtual ~OpKernel();
 
   // An OpKernel's computation can be either synchronous or
@@ -96,14 +169,17 @@ class OpKernel {
   // Synchronous compute.
   //
   // "context" is guaranteed to be alive until Compute() returns.
+  /**同步计算（相对的AsyncOpKernel::ComputeAsync为异步计算）。要求此方法的实现必须是线程安全的。*/
   virtual void Compute(OpKernelContext* context) = 0;
 
   // Returns nullptr iff this op kernel is synchronous.
+  /**i=异步操作返回空指针*/
   virtual AsyncOpKernel* AsAsync() { return nullptr; }
 
   // Returns true iff this op kernel is considered "expensive". The
   // runtime may use this flag to optimize graph execution for example
   // to "inline" inexpensive kernels.
+  /**是否为重量级操作，用于优化图的执行*/
   virtual bool IsExpensive() { return true; }
 
   // Accessors.
@@ -173,6 +249,7 @@ class AsyncOpKernel : public OpKernel {
   // Implementations of ComputeAsync() must run "done" to signal the
   // completion of the computation. "context" is guaranteed to be
   // alive until the "done" callback starts.
+  /**实现异步计算时，需要调用done来表明计算的结束，在结束之前都可以调用上下文*/
   typedef std::function<void()> DoneCallback;
   virtual void ComputeAsync(OpKernelContext* context, DoneCallback done) = 0;
 
@@ -187,6 +264,7 @@ class AsyncOpKernel : public OpKernel {
 // wrapper ensures that all uses of the Tensor are tracked, because in
 // order to retrieve the Tensor the caller must use AccessTensor which
 // notifies the context.
+/***/
 class PersistentTensor {
  public:
   PersistentTensor() {}
@@ -1076,6 +1154,7 @@ Status FindKernelDef(DeviceType device_type, const NodeDef& node_def,
 // Treats 'registry_ptr' as a pointer to KernelRegistry. For each kernel 'k'
 // registered with the current library's global kernel registry (obtained by
 // calling GlobalKernelRegistry()), inserts 'k' into registry_ptr.
+/** 按照类C的编译和连接规约来编译和连接*/
 extern "C" void RegisterKernels(void* registry_ptr);
 
 namespace kernel_factory {
