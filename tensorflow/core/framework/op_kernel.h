@@ -251,10 +251,13 @@ class AsyncOpKernel : public OpKernel {
   // alive until the "done" callback starts.
   /**实现异步计算时，需要调用done来表明计算的结束，在结束之前都可以调用上下文*/
   typedef std::function<void()> DoneCallback;
+  /**虚函数:异步计算*/
   virtual void ComputeAsync(OpKernelContext* context, DoneCallback done) = 0;
 
+  /**转为异步，直接返回自己*/
   AsyncOpKernel* AsAsync() final { return this; }
 
+  /**同步计算*/
   void Compute(OpKernelContext* context) final;
 };
 
@@ -264,19 +267,24 @@ class AsyncOpKernel : public OpKernel {
 // wrapper ensures that all uses of the Tensor are tracked, because in
 // order to retrieve the Tensor the caller must use AccessTensor which
 // notifies the context.
-/***/
+/**持久化张量，是张量的一个封装，用于在使用异步设备（比如GPU）报着内存安全。
+当张量再Op里执行是，系统需要发出通知，这个封装保证张量被有序访问*/
 class PersistentTensor {
  public:
   PersistentTensor() {}
+  /**explicit用来防止由构造函数定义的隐式转换*/
   explicit PersistentTensor(const Tensor& tensor) : tensor_(tensor) {}
 
   // Caller does not own the returned Tensor*.
+  /**访问张量，访问者并不拥有返回的张量*/
   Tensor* AccessTensor(OpKernelConstruction* context);
   // Caller does not own the returned Tensor*.
+  /**访问张量，访问者并不拥有返回的张量*/
   Tensor* AccessTensor(OpKernelContext* context);
 
   // The check for initialization does not need to access the
   // underlying tensor buffer.
+  /**检查张量是否已经初始化*/
   bool IsInitialized() { return tensor_.IsInitialized(); }
 
  private:
@@ -326,6 +334,7 @@ class OpKernelConstruction {
   // Allocates a temporary Tensor of the specified type and shape. The
   // Tensor must not be used after kernel construction is
   // complete. See comment above.
+  /**申请张量存储*/
   Status allocate_temp(DataType type, const TensorShape& shape,
                        Tensor* out_temp);
 
@@ -337,28 +346,39 @@ class OpKernelConstruction {
   // caller can use instead of calling
   // out_persistent->AccessTensor. The caller does not own out_tensor
   // and should not keep a copy of it. See comment above.
+  /**对于想维护一个持久状态的张量，使用此方法申请内存*/
   Status allocate_persistent(DataType type, const TensorShape& shape,
                              PersistentTensor* out_persistent,
                              Tensor** out_tensor);
 
   // User-supplied configuration of this operation.
+  /**返回节点定义*/
   const NodeDef& def() const { return *def_; }
 
   // Op registered for this op type.
+  /**返回操作定义*/
   const OpDef& op_def() const { return *op_def_; }
 
   // For inspecting the inputs to this operation.
+  /**入参个数*/
   int num_inputs() const { return input_types_.size(); }
+  /**指定入参的类型*/
   DataType input_type(int i) const { return input_types_[i]; }
+  /**s所有入参的类型*/
   const DataTypeSlice& input_types() const { return input_types_; }
+  /**所有入参内存类型*/
   const MemoryTypeSlice& input_memory_types() const {
     return input_memory_types_;
   }
 
   // For inspecting the outputs expected from this operation.
+  /**出参个数*/
   int num_outputs() const { return output_types_.size(); }
+  /**指定出参的类型*/
   DataType output_type(int i) const { return output_types_[i]; }
+  /**所有出参的类型*/
   const DataTypeSlice& output_types() const { return output_types_; }
+  /**所有出参的内存的类型*/
   const MemoryTypeSlice& output_memory_types() const {
     return output_memory_types_;
   }
@@ -366,36 +386,46 @@ class OpKernelConstruction {
   // If expected_inputs == inputs() and expected_outputs == output_types(),
   // returns OK, else returns INVALID_ARGUMENT with an error message.
   // Recommended for Ops with dynamic signatures.
+  /**所有出参的内存的类型*/
   Status MatchSignature(const DataTypeSlice expected_inputs,
                         const DataTypeSlice expected_outputs);
 
   // For recording configuration errors during construction.
+  /**出错时设置状态*/
   void SetStatus(const Status& status);
+  /**查询状态*/
   const Status& status() const { return *status_; }
 
   // Look up the attr with name attr_name and set *value to its value.  If no
   // attr with attr_name is found in def(), or the attr does not have
   // a matching type, a non-ok status will be returned.
+  /**查找并设置属性，如果找不到，则返回non-ok状态*/
   template <class T>
   Status GetAttr(StringPiece attr_name, T* value) const;
 
   // May be used, e.g., to get GPU handles, etc.
   // TODO(tucker): Add example usage.
+  /**返回设备,比如用来获取GPU handles*/
   DeviceBase* device() const { return device_; }
 
   // Return the device type.
+  /**返回设备类型*/
   const DeviceType& device_type() const { return device_type_; }
 
   // If not nullptr, the kernel can instantiate functions defined in
   // the library. E.g.,
   // CHECK_NOTNULL(function_library())->Instantiate("Foo", ...).
+  /**返回设备类型*/
   FunctionLibraryRuntime* function_library() const { return flib_; }
 
   // The GraphDef version whose behavior we should follow.
+  /**返回图定义的版本*/
   const int graph_def_version() const { return graph_def_version_; }
 
   // Helper routines for the OP_REQUIRES macros
+  /**标识上下文失败*/
   void CtxFailure(Status s);
+  /**标识上下文失败并告警*/
   void CtxFailureWithWarning(Status s);
 
  private:
