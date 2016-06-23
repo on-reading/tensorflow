@@ -1,4 +1,5 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# pylint: disable=g-bad-file-header
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
 """Tests for learn.dataframe.tensorflow_dataframe."""
 
 from __future__ import absolute_import
@@ -121,7 +123,6 @@ class TensorFlowDataFrameTestCase(tf.test.TestCase):
     """Test construction from Pandas DataFrame."""
     if not HAS_PANDAS:
       return
-
     pandas_df = pd.DataFrame({"sparrow": range(10), "ostrich": 1})
     tensorflow_df = df.TensorFlowDataFrame.from_pandas(pandas_df,
                                                        batch_size=10,
@@ -174,7 +175,6 @@ class TensorFlowDataFrameTestCase(tf.test.TestCase):
   def testFromCSV(self):
     if not HAS_PANDAS:
       return
-
     num_batches = 100
     batch_size = 8
     enqueue_size = 7
@@ -212,6 +212,8 @@ class TensorFlowDataFrameTestCase(tf.test.TestCase):
     self.assertEqual(expected_num_batches, actual_num_batches)
 
   def testFromCSVWithFeatureSpec(self):
+    if not HAS_PANDAS:
+      return
     num_batches = 100
     batch_size = 8
 
