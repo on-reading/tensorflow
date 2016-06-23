@@ -39,21 +39,24 @@ limitations under the License.
 namespace tensorflow {
 
 namespace {
-
+/**判断入参，出参类型是否匹配*/
 Status MatchSignatureHelper(const DataTypeSlice expected_inputs,
                             const DataTypeSlice expected_outputs,
                             const DataTypeSlice inputs,
                             const DataTypeSlice outputs) {
   bool signature_mismatch = false;
-
+  /**如果入参格式和预期入参个数不匹配，则返回不匹配*/
   if (inputs.size() != expected_inputs.size()) signature_mismatch = true;
+  /**如果某个入参的类型不匹配，则返回不匹配*/
   for (size_t i = 0; !signature_mismatch && i < inputs.size(); ++i) {
     if (!TypesCompatible(expected_inputs[i], inputs[i])) {
       signature_mismatch = true;
     }
   }
 
+  /**如果出参格式和预期出参个数不匹配，则返回不匹配*/
   if (outputs.size() != expected_outputs.size()) signature_mismatch = true;
+  /**如果某个出参的类型不匹配，则返回不匹配*/
   for (size_t i = 0; !signature_mismatch && i < outputs.size(); ++i) {
     if (!TypesCompatible(expected_outputs[i], outputs[i])) {
       signature_mismatch = true;
@@ -61,12 +64,14 @@ Status MatchSignatureHelper(const DataTypeSlice expected_inputs,
   }
 
   if (signature_mismatch) {
+    /**如果不匹配,则返回不匹配，包含实际参数信息和预期参数信息*/
     return errors::InvalidArgument("Signature mismatch, have: ",
                                    DataTypeSliceString(inputs), "->",
                                    DataTypeSliceString(outputs), " expected: ",
                                    DataTypeSliceString(expected_inputs), "->",
                                    DataTypeSliceString(expected_outputs));
   }
+  /**如果匹配,则返回OK*/
   return Status::OK();
 }
 
